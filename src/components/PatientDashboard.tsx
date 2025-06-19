@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Calendar as CalendarIcon, Image, User } from "lucide-react";
 import MedicationTracker from "./MedicationTracker";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
+import { supabase } from '@/lib/supabaseClient';
 
 const PatientDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -17,6 +18,24 @@ const PatientDashboard = () => {
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const isTodaySelected = isToday(selectedDate);
   const isSelectedDateTaken = takenDates.has(selectedDateStr);
+
+  const fetchMedications = async () => {
+    const { data, error } = await supabase
+      .from('medication_logs')
+      .select('date_taken')
+      .eq('patient_id', '56b7acd1-809d-430a-a094-4383eb17f32a')
+      .eq('is_taken', true);
+
+    if (error) {
+      console.error('Fetch error:', error.message);
+    } else if (data) {
+      const dates = data.map(entry => entry.date_taken);
+      setTakenDates(new Set(dates));
+    }
+  };
+  useEffect(() => {
+    fetchMedications();
+  }, []);
 
   const handleMarkTaken = (date: string, imageFile?: File) => {
     setTakenDates(prev => new Set(prev).add(date));
@@ -29,12 +48,12 @@ const PatientDashboard = () => {
   const getStreakCount = () => {
     let streak = 0;
     let currentDate = new Date(today);
-    
+
     while (takenDates.has(format(currentDate, 'yyyy-MM-dd')) && streak < 30) {
       streak++;
       currentDate.setDate(currentDate.getDate() - 1);
     }
-    
+
     return streak;
   };
 
@@ -43,19 +62,19 @@ const PatientDashboard = () => {
     const isPast = isBefore(date, startOfDay(today));
     const isCurrentDay = isToday(date);
     const isTaken = takenDates.has(dateStr);
-    
+
     let className = "";
-    
+
     if (isCurrentDay) {
       className += " bg-blue-100 border-blue-300 ";
     }
-    
+
     if (isTaken) {
       className += " bg-green-100 text-green-800 ";
     } else if (isPast) {
       className += " bg-red-50 text-red-600 ";
     }
-    
+
     return className;
   };
 
@@ -72,7 +91,7 @@ const PatientDashboard = () => {
             <p className="text-white/90 text-lg">Ready to stay on track with your medication?</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm">
             <div className="text-2xl font-bold">{getStreakCount()}</div>
@@ -100,7 +119,7 @@ const PatientDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <MedicationTracker 
+              <MedicationTracker
                 date={selectedDateStr}
                 isTaken={isSelectedDateTaken}
                 onMarkTaken={handleMarkTaken}
@@ -131,7 +150,7 @@ const PatientDashboard = () => {
                     const isTaken = takenDates.has(dateStr);
                     const isPast = isBefore(date, startOfDay(today));
                     const isCurrentDay = isToday(date);
-                    
+
                     return (
                       <div className="relative w-full h-full flex items-center justify-center">
                         <span>{date.getDate()}</span>
@@ -148,7 +167,7 @@ const PatientDashboard = () => {
                   }
                 }}
               />
-              
+
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>

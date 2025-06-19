@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,31 +8,144 @@ import { Calendar } from "@/components/ui/calendar";
 import { Users, Bell, Calendar as CalendarIcon, Mail, AlertTriangle, Check, Clock, Camera } from "lucide-react";
 import NotificationSettings from "./NotificationSettings";
 import MedicationList from "./MedicationList";
-import { format, subDays, isToday, isBefore, startOfDay } from "date-fns";
+import { format, subDays, isToday, isBefore, startOfDay, startOfMonth, endOfMonth, addDays, differenceInDays } from "date-fns";
+import { supabase } from '@/lib/supabaseClient';
 
 const CaretakerDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [takenDates, setTakenDates] = useState<Set<string>>(new Set());
 
   // Mock data for demonstration
-  const patientName = "Eleanor Thompson";
-  const adherenceRate = 85;
-  const currentStreak = 5;
-  const missedDoses = 3;
+  const [patientName, setPatientName] = useState('');
+  const [adherenceRate, setAdherenceRate] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [missedDoses, setMissedDoses] = useState(0);
+  const [takenDays, setTakenDays] = useState(0);
+  const [missedDays, setMissedDays] = useState(0);
+  const [remainingDays, setRemainingDays] = useState(0);
+  const [recentActivity, setRecentActivity] = useState<
+    { date: string; taken: boolean; time: string | null; hasPhoto: boolean }[]
+  >([]);
 
-  // Mock data for taken medications (same as in PatientDashboard)
-  const takenDates = new Set([
-    "2024-06-10", "2024-06-09", "2024-06-07", "2024-06-06", 
-    "2024-06-05", "2024-06-04", "2024-06-02", "2024-06-01"
-  ]);
+  const fetchMedications = async () => {
+    const { data, error } = await supabase
+      .from('medication_logs')
+      .select('date_taken')
+      .eq('patient_id', '56b7acd1-809d-430a-a094-4383eb17f32a')
+      .eq('is_taken', true);
 
-  const recentActivity = [
-    { date: "2024-06-10", taken: true, time: "8:30 AM", hasPhoto: true },
-    { date: "2024-06-09", taken: true, time: "8:15 AM", hasPhoto: false },
-    { date: "2024-06-08", taken: false, time: null, hasPhoto: false },
-    { date: "2024-06-07", taken: true, time: "8:45 AM", hasPhoto: true },
-    { date: "2024-06-06", taken: true, time: "8:20 AM", hasPhoto: false },
-  ];
+    if (error) {
+      console.error('Fetch error:', error.message);
+    } else if (data) {
+      const dates = data.map(entry => entry.date_taken);
+      setTakenDates(new Set(dates));
+    }
+  };
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+  useEffect(() => {
+    const fetchPatientStats = async () => {
+      const patientId = '56b7acd1-809d-430a-a094-4383eb17f32a';
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('patients')
+        .select('name')
+        .eq('id', patientId)
+        .single();
+
+      if (profileData) setPatientName(profileData.name);
+      if (profileError) console.error('Patient fetch error:', profileError.message);
+
+      const { data: logs, error: logsError } = await supabase
+        .from('medication_logs')
+        .select('date_taken, is_taken, image_url, taken_at')
+        .eq('patient_id', patientId);
+
+      if (logsError) {
+        console.error('Logs fetch error:', logsError.message);
+        return;
+      }
+
+      const logsMap = new Map(logs.map(log => [log.date_taken, log]));
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const takenSet = new Set<string>();
+
+      const recent: { date: string; taken: boolean; time: string | null; hasPhoto: boolean }[] = [];
+      for (let i = 0; i < 7; i++) {
+        const day = subDays(new Date(), i);
+        const date = format(day, 'yyyy-MM-dd');
+        const log = logsMap.get(date);
+
+        if (log?.is_taken) {
+          takenSet.add(date);
+        }
+
+        let time = null;
+        try {
+          if (log?.taken_at) {
+            time = format(new Date(`${log.date_taken}T${log.taken_at}`), 'h:mm a');
+          }
+        } catch (e) {
+          console.warn("Invalid taken_at format", log?.taken_at);
+        }
+
+        recent.push({
+          date,
+          taken: !!log?.is_taken,
+          time,
+          hasPhoto: !!log?.image_url
+        });
+      }
+
+      const presentDay = startOfDay(new Date());
+      const start = startOfMonth(presentDay);
+      const end = endOfMonth(presentDay);
+
+      let taken = 0;
+      let missed = 0;
+      let remaining = 0;
+      let streak = 0;
+
+      const daysInMonth = differenceInDays(end, start) + 1;
+
+      for (let i = 0; i < daysInMonth; i++) {
+        const dateObj = addDays(start, i);
+        const dayStr = format(dateObj, 'yyyy-MM-dd');
+
+        const isBeforeToday = isBefore(dateObj, presentDay);
+        const isTodayDate = isToday(dateObj);
+        const isAfterToday = isBefore(presentDay, dateObj);
+
+        if (takenSet.has(dayStr)) {
+          taken++;
+          if (isBeforeToday || isTodayDate) streak++;
+        } else {
+          if (isBeforeToday) missed++;
+          else if (isTodayDate || isAfterToday) remaining++;
+        }
+      }
+
+
+      const totalEntries = 30;
+      const adherence = (taken + missed) > 0
+        ? Math.round((taken / (taken + missed)) * 100)
+        : 0;
+      setTakenDates(takenSet);
+      setRecentActivity(recent.reverse());
+      setAdherenceRate(adherence);
+      setCurrentStreak(streak);
+      setMissedDoses(missed);
+      setTakenDays(taken);
+      setMissedDays(missed);
+      setRemainingDays(remaining);
+
+    };
+
+    fetchPatientStats();
+  }, []);
+
 
   const dailyMedication = {
     name: "Daily Medication Set",
@@ -42,7 +155,6 @@ const CaretakerDashboard = () => {
 
   const handleSendReminderEmail = () => {
     console.log("Sending reminder email to patient...");
-    // Here you would implement email sending functionality
     alert("Reminder email sent to " + patientName);
   };
 
@@ -67,7 +179,7 @@ const CaretakerDashboard = () => {
             <p className="text-white/90 text-lg">Monitoring {patientName}'s medication adherence</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm">
             <div className="text-2xl font-bold">{adherenceRate}%</div>
@@ -127,24 +239,24 @@ const CaretakerDashboard = () => {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  className="w-full justify-start" 
+                <Button
+                  className="w-full justify-start"
                   variant="outline"
                   onClick={handleSendReminderEmail}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Send Reminder Email
                 </Button>
-                <Button 
-                  className="w-full justify-start" 
+                <Button
+                  className="w-full justify-start"
                   variant="outline"
                   onClick={handleConfigureNotifications}
                 >
                   <Bell className="w-4 h-4 mr-2" />
                   Configure Notifications
                 </Button>
-                <Button 
-                  className="w-full justify-start" 
+                <Button
+                  className="w-full justify-start"
                   variant="outline"
                   onClick={handleViewCalendar}
                 >
@@ -169,15 +281,15 @@ const CaretakerDashboard = () => {
                 <Progress value={adherenceRate} className="h-3" />
                 <div className="grid grid-cols-3 gap-4 text-center text-sm">
                   <div>
-                    <div className="font-medium text-green-600">22 days</div>
+                    <div className="font-medium text-green-600">{takenDays} days</div>
                     <div className="text-muted-foreground">Taken</div>
                   </div>
                   <div>
-                    <div className="font-medium text-red-600">3 days</div>
+                    <div className="font-medium text-red-600">{missedDays}</div>
                     <div className="text-muted-foreground">Missed</div>
                   </div>
                   <div>
-                    <div className="font-medium text-blue-600">5 days</div>
+                    <div className="font-medium text-blue-600">{remainingDays} days</div>
                     <div className="text-muted-foreground">Remaining</div>
                   </div>
                 </div>
@@ -196,9 +308,8 @@ const CaretakerDashboard = () => {
                 {recentActivity.map((activity, index) => (
                   <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        activity.taken ? 'bg-green-100' : 'bg-red-100'
-                      }`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activity.taken ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
                         {activity.taken ? (
                           <Check className="w-5 h-5 text-green-600" />
                         ) : (
@@ -254,7 +365,7 @@ const CaretakerDashboard = () => {
                         const isTaken = takenDates.has(dateStr);
                         const isPast = isBefore(date, startOfDay(new Date()));
                         const isCurrentDay = isToday(date);
-                        
+
                         return (
                           <div className="relative w-full h-full flex items-center justify-center">
                             <span>{date.getDate()}</span>
@@ -271,7 +382,7 @@ const CaretakerDashboard = () => {
                       }
                     }}
                   />
-                  
+
                   <div className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -292,7 +403,7 @@ const CaretakerDashboard = () => {
                   <h4 className="font-medium mb-4">
                     Details for {format(selectedDate, 'MMMM d, yyyy')}
                   </h4>
-                  
+
                   <div className="space-y-4">
                     {takenDates.has(format(selectedDate, 'yyyy-MM-dd')) ? (
                       <div className="p-4 bg-green-50 rounded-lg border border-green-200">

@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Image, Camera, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/lib/supabaseClient";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from "@/components/ui/alert-dialog";
 
 interface MedicationTrackerProps {
   date: string;
@@ -16,6 +18,9 @@ interface MedicationTrackerProps {
 const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTrackerProps) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [AlertMsg, setAlertMsg] = useState('');
+  const [AlertMsgHeading, setAlertMsgHeading] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dailyMedication = {
@@ -36,10 +41,62 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
     }
   };
 
-  const handleMarkTaken = () => {
-    onMarkTaken(date, selectedImage || undefined);
-    setSelectedImage(null);
-    setImagePreview(null);
+  const handleMarkTaken = async () => {
+    let imageUrl = null;
+    let patientId = '56b7acd1-809d-430a-a094-4383eb17f32a';
+    if (selectedImage) {
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `public/${patientId}-${date}.${fileExt}`;
+      const { data, error: uploadError } = await supabase
+        .storage
+        .from('medication-images')
+        .upload(fileName, selectedImage);
+
+      if (uploadError) {
+        console.error("Image upload failed:", uploadError);
+        setAlertMsgHeading('Error');
+        setAlertMsg('Image upload failed');
+        setOpen(true);
+        return;
+      }
+      const { data: publicUrlData } = supabase
+        .storage
+        .from('medication-images')
+        .getPublicUrl(fileName);
+
+      imageUrl = publicUrlData.publicUrl;
+    }
+
+    const currentTime = new Date().toLocaleTimeString('en-GB', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    const { error: insertError } = await supabase
+      .from('medication_logs')
+      .insert([
+        {
+          patient_id: patientId,
+          date_taken: date,
+          taken_at: currentTime,
+          is_taken: true,
+          image_url: imageUrl
+        }
+      ]);
+
+    if (insertError) {
+      console.error("Insert failed:", insertError);
+      return;
+    } else {
+      setSelectedImage(null);
+      setImagePreview(null);
+      onMarkTaken(date, selectedImage || undefined);
+      setAlertMsgHeading('Success');
+      setAlertMsg('Medication Taken Successfully');
+      setOpen(true);
+    }
   };
 
   if (isTaken) {
@@ -58,7 +115,7 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
             </p>
           </div>
         </div>
-        
+
         <Card className="border-green-200 bg-green-50/50">
           <CardContent className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
@@ -82,6 +139,19 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{AlertMsgHeading}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {AlertMsg}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
@@ -109,7 +179,7 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
             <p className="text-sm text-muted-foreground mb-4">
               Take a photo of your medication or pill organizer as confirmation
             </p>
-            
+
             <input
               type="file"
               accept="image/*"
@@ -117,7 +187,7 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
               ref={fileInputRef}
               className="hidden"
             />
-            
+
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
@@ -126,7 +196,7 @@ const MedicationTracker = ({ date, isTaken, onMarkTaken, isToday }: MedicationTr
               <Camera className="w-4 h-4 mr-2" />
               {selectedImage ? "Change Photo" : "Take Photo"}
             </Button>
-            
+
             {imagePreview && (
               <div className="mt-4">
                 <img

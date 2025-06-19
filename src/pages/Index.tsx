@@ -4,11 +4,14 @@ import Onboarding from "@/components/Onboarding";
 import PatientDashboard from "@/components/PatientDashboard";
 import CaretakerDashboard from "@/components/CaretakerDashboard";
 import { Button } from "@/components/ui/button";
-import { Users, User } from "lucide-react";
+import { Users, User, LogOut } from "lucide-react";
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 type UserType = "patient" | "caretaker" | null;
 
 const Index = () => {
+  const navigate = useNavigate();
   const [userType, setUserType] = useState<UserType>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
 
@@ -20,6 +23,14 @@ const Index = () => {
   const switchUserType = () => {
     const newType = userType === "patient" ? "caretaker" : "patient";
     setUserType(newType);
+  };
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Logout failed:', error.message);
+    } else {
+      navigate('/');
+    }
   };
 
   if (!isOnboarded) {
@@ -41,15 +52,23 @@ const Index = () => {
               </p>
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
+          <div className="flex gap-3">
+              <Button
+            variant="outline"
             onClick={switchUserType}
             className="flex items-center gap-2 hover:bg-accent transition-colors"
           >
             {userType === "patient" ? <Users className="w-4 h-4" /> : <User className="w-4 h-4" />}
             Switch to {userType === "patient" ? "Caretaker" : "Patient"}
           </Button>
+          <Button
+            variant="destructive"
+            onClick={handleLogout}
+            className="flex items-center gap-2 hover:bg-red-600 transition-colors"
+          >
+            <LogOut />
+          </Button>
+          </div>
         </div>
       </header>
 
