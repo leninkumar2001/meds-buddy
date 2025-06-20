@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 
-const Login: React.FC = () => {
+type UserType = "patient" | "caretaker";
+
+interface LoginProps {
+    onLoginSuccess: (userType: UserType) => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const location = useLocation();
+    const userType = location.state?.userType as UserType;
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,7 +28,7 @@ const Login: React.FC = () => {
         setError(null);
         setLoading(true);
 
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
             email: formData.email,
             password: formData.password,
         });
@@ -30,7 +38,13 @@ const Login: React.FC = () => {
         if (error) {
             setError(error.message);
         } else {
-            navigate('/home');
+            if (userType) {
+                navigate("/", {
+                    state: { loggedIn: true, userType }
+                });
+            } else {
+                navigate('/');
+            }
         }
     };
 
@@ -45,27 +59,48 @@ const Login: React.FC = () => {
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                                 Email:
                             </label>
-                            <Input type='email' id="email" name='email' onChange={handleChange} value={formData.email} required />
-
+                            <Input
+                                type="email"
+                                id="email"
+                                name="email"
+                                onChange={handleChange}
+                                value={formData.email}
+                                required
+                            />
                         </div>
                         <div className="mb-4">
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                                 Password:
                             </label>
-                            <Input type='password' id="password" name='password' onChange={handleChange} value={formData.password} required />
+                            <Input
+                                type="password"
+                                id="password"
+                                name="password"
+                                onChange={handleChange}
+                                value={formData.password}
+                                required
+                            />
                         </div>
                         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                        <Button type='submit' disabled={loading} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg">
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+                        >
                             {loading ? 'Logging in...' : 'Login'}
                         </Button>
-                        <Button type='submit' disabled={loading} className="w-full mt-6 bg-white border border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 py-3 text-lg" onClick={() => navigate('/signup')} >
+                        <Button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => navigate('/signup')}
+                            className="w-full mt-4 border border-blue-600 bg-white hover:bg-blue-600 hover:text-white text-blue-600 py-3 text-lg"
+                        >
                             Sign up
                         </Button>
                     </form>
                 </div>
             </div>
         </>
-
     );
 };
 

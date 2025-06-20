@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./lib/ProtectedRoute";
+import IndexWrapper from "./components/IndexWrapper";
 
 const queryClient = new QueryClient();
 
@@ -18,16 +18,18 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
           <Route
-            path="/home"
+            path="/login"
             element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
+              <Login
+                onLoginSuccess={(userType) => {
+                  console.log("Logged in as", userType);
+                }}
+              />
             }
           />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/" element={<IndexWrapper />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

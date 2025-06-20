@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Onboarding from "@/components/Onboarding";
 import PatientDashboard from "@/components/PatientDashboard";
@@ -6,30 +5,46 @@ import CaretakerDashboard from "@/components/CaretakerDashboard";
 import { Button } from "@/components/ui/button";
 import { Users, User, LogOut } from "lucide-react";
 import { supabase } from '@/lib/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 type UserType = "patient" | "caretaker" | null;
 
-const Index = () => {
+interface IndexProps {
+  userType: UserType;
+  setUserType: (type: UserType) => void;
+  isOnboarded: boolean;
+  setIsOnboarded: (value: boolean) => void;
+}
+
+const Index = ({ userType, setUserType, isOnboarded, setIsOnboarded }: IndexProps) => {
   const navigate = useNavigate();
-  const [userType, setUserType] = useState<UserType>(null);
-  const [isOnboarded, setIsOnboarded] = useState(false);
+  const location = useLocation();
+
+  const state = location.state as { loggedIn?: boolean; userType?: UserType } | null;
+
+  if (state?.loggedIn && state?.userType && !isOnboarded) {
+    setUserType(state.userType);
+    setIsOnboarded(true);
+  }
 
   const handleOnboardingComplete = (type: UserType) => {
-    setUserType(type);
-    setIsOnboarded(true);
+    // Navigate to login, and pass type info
+    navigate('/login', { state: { userType: type } });
   };
 
   const switchUserType = () => {
     const newType = userType === "patient" ? "caretaker" : "patient";
     setUserType(newType);
   };
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Logout failed:', error.message);
     } else {
       navigate('/');
+      setUserType(null);
+      setIsOnboarded(false);
     }
   };
 
@@ -53,21 +68,21 @@ const Index = () => {
             </div>
           </div>
           <div className="flex gap-3">
-              <Button
-            variant="outline"
-            onClick={switchUserType}
-            className="flex items-center gap-2 hover:bg-accent transition-colors"
-          >
-            {userType === "patient" ? <Users className="w-4 h-4" /> : <User className="w-4 h-4" />}
-            Switch to {userType === "patient" ? "Caretaker" : "Patient"}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleLogout}
-            className="flex items-center gap-2 hover:bg-red-600 transition-colors"
-          >
-            <LogOut />
-          </Button>
+            <Button
+              variant="outline"
+              onClick={switchUserType}
+              className="flex items-center gap-2 hover:bg-accent transition-colors"
+            >
+              {userType === "patient" ? <Users className="w-4 h-4" /> : <User className="w-4 h-4" />}
+              Switch to {userType === "patient" ? "Caretaker" : "Patient"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleLogout}
+              className="flex items-center gap-2 hover:bg-red-600 transition-colors"
+            >
+              <LogOut />
+            </Button>
           </div>
         </div>
       </header>
