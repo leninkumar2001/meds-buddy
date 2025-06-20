@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, } from "@/components/ui/alert-dialog";
 import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,39 +136,53 @@ const MedicationList: React.FC = () => {
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-10 justify-between space-y-6">
-                <table className="min-w-[55%] border border-black rounded-lg border-collapse my-3 overflow-hidden shadow-lg">
-                    <thead >
-                        <tr className="bg-gray-100">
-                            <th className=" px-4 py-2 text-left">Name</th>
-                            <th className=" px-4 py-2 text-left">Dosage</th>
-                            <th className="px-4 py-2 text-left">Frequency</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {medications.map((med) => (
-                            <tr key={med.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-2">{med.name}</td>
-                                <td className="px-4 py-2">{med.dosage}mg</td>
-                                <td className="px-4 py-2">
-                                    {med.frequency}
-                                    <button
-                                        onClick={() => {
-                                            setConfirmDeleteId(med.id);
-                                            setMode('confirm');
-                                            setAlertMsgHeading('Confirm Deletion');
-                                            setAlertMsg(`Are you sure you want to delete "${med.name}"? This action cannot be undone.`);
-                                            setOpen(true);
-                                        }}
-                                        className="ml-4 text-red-500 hover:text-red-700 float-right mt-2"
-                                        title="Delete"
-                                    >
-                                        <Trash className="w-4 h-4" />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <div className='min-w-[55%] min-h-[400px] max-h-[400px] overflow-auto rounded-lg border-collapse my-3 overflow-hidden shadow-lg'>
+                    <Table className="">
+                        <TableHeader>
+                            <TableRow className="bg-gray-100">
+                                <TableHead className="px-4 py-2 text-left">Name</TableHead>
+                                <TableHead className="px-4 py-2 text-left">Dosage</TableHead>
+                                <TableHead className="px-4 py-2 text-left">Frequency</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {medications.length > 0 ? (
+                                medications.map((med) => (
+                                    <TableRow key={med.id} className="hover:bg-gray-50 h-[20px]">
+                                        <TableCell className="h-[20px] px-4 py-5">{med.name}</TableCell>
+                                        <TableCell className="h-[20px] px-4 py-5">{med.dosage}mg</TableCell>
+                                        <TableCell className="h-[20px] px-4 py-5">
+                                            {med.frequency}
+                                            <button
+                                                onClick={() => {
+                                                    setConfirmDeleteId(med.id);
+                                                    setMode("confirm");
+                                                    setAlertMsgHeading("Confirm Deletion");
+                                                    setAlertMsg(
+                                                        `Are you sure you want to delete "${med.name}"? This action cannot be undone.`
+                                                    );
+                                                    setOpen(true);
+                                                }}
+                                                className="ml-4 text-red-500 hover:text-red-700 float-right mt-2"
+                                                title="Delete"
+                                            >
+                                                <Trash className="w-4 h-4" />
+                                            </button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                                        No medications found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+
+
+                </div>
                 <Card className="min-w-[40%] my-3" style={{ margin: '14px 0' }}>
                     <CardHeader className='min-w-full flex justify-between items-center'>
                         <CardTitle>
