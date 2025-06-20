@@ -75,3 +75,20 @@ Deploy to Vercel/Netlify
 - State management approach
 - Performance considerations (unnecessary re-renders)
 - Security awareness (input sanitization)
+
+
+## -- Setup Instructions --
+
+## Assessment Implentations
+- Added Login and Sign up page with respective functions, error handling and Authentication using Supabase
+- Implemented Medication listing tab in Caretaker dashboard and added functionality to list and add the medications
+- Added dynamic adherence percentage in caretaker's overview
+- Added event to mark 'Medication taken' and stored in Supabase with image, also the taken dates will be shown to the caretaker
+
+## Included packages
+- Supabase (For authentication and database)
+
+## Current login details
+- email: leninkumar.ks2001@gmail.com
+- password: Pass@123
+- Note: you can also sign up using new details (the email should be verifed once account is created)

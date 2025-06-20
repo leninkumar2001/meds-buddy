@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Header from "@/components/Header";
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -52,41 +53,44 @@ const Signup = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-                <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                            Name:
-                        </label>
-                        <Input type='text' id='name' name='name' value={formData.name} onChange={handleChange} required/>
-                    </div>
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                            Email:
-                        </label>
-                        <Input type='email' id='email' name='email' value={formData.email} onChange={handleChange} required/>
-                    </div>
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                            Password:
-                        </label>
-                        <Input type='password' id='password' name='password' value={formData.password} onChange={handleChange} required/>
-                    </div>
-                    <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                            Confirm Password:
-                        </label>
-                        <Input type='password' id='confirmPassword' name='confirmPassword' value={formData.confirmPassword} onChange={handleChange} required/>
-                    </div>
-                    {error && <p className="text-red-500 text-sm">{error}</p>}
-                    <Button type='submit' disabled={loading} className='w-full bg-green-600 hover:bg-green-700'>
-                        {loading ? 'Signing up...' : 'Sign Up'}
-                    </Button>
-                </form>
+        <>
+            <Header />
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                Name:
+                            </label>
+                            <Input type='text' id='name' name='name' value={formData.name} onChange={handleChange} required />
+                        </div>
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                                Email:
+                            </label>
+                            <Input type='email' id='email' name='email' value={formData.email} onChange={handleChange} required />
+                        </div>
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                Password:
+                            </label>
+                            <Input type='password' id='password' name='password' value={formData.password} onChange={handleChange} required />
+                        </div>
+                        <div>
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                                Confirm Password:
+                            </label>
+                            <Input type='password' id='confirmPassword' name='confirmPassword' value={formData.confirmPassword} onChange={handleChange} required />
+                        </div>
+                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                        <Button type='submit' disabled={loading} className='w-full bg-green-600 hover:bg-green-700'>
+                            {loading ? 'Signing up...' : 'Sign Up'}
+                        </Button>
+                    </form>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 
